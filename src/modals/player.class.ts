@@ -71,6 +71,15 @@ export class Player {
     return true;
   }
 
+  die(): void {
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    body.setVelocity(0, 0);
+    body.enable = false;
+    this.sprite.anims.stop();
+    this.sprite.setTint(0x7f302d).setAlpha(0.55);
+    this.weaponSprite.setVisible(false);
+  }
+
   startWeaponSwing(direction: Phaser.Math.Vector2, time: number, duration: number): void {
     this.attackFacing.copy(direction);
     this.attackStartedAt = time;

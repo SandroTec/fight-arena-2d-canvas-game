@@ -1,33 +1,71 @@
 import Phaser from 'phaser';
+import { pirateLeaderAnimation } from '../assets/pirateLeader.ts';
 import { pirateZombieAnimation } from '../assets/pirateZombie.ts';
 import type { Player } from './player.class.ts';
 
-/** One simple chaser enemy with a health bar and a short-range attack. */
-export class Enemy {
-  static readonly maxHealth = 50;
-  static readonly attackDamage = 10;
-  static readonly attackRange = 58;
+export interface EnemyDifficulty {
+  maxHealth: number;
+  attackDamage: number;
+  attackRange: number;
+  speed: number;
+  detectionRadius: number;
+  attackCooldownMs: number;
+}
 
+export type EnemyKind = 'zombie' | 'leader';
+
+const DEFAULT_DIFFICULTY: EnemyDifficulty = {
+  maxHealth: 50,
+  attackDamage: 10,
+  attackRange: 58,
+  speed: 82,
+  detectionRadius: 320,
+  attackCooldownMs: 900,
+};
+
+/** One simple chaser enemy with level-configurable stats. */
+export class Enemy {
   readonly sprite: Phaser.Physics.Arcade.Sprite;
+  readonly kind: EnemyKind;
+  readonly maxHealth: number;
   private readonly healthBar: Phaser.GameObjects.Graphics;
   private readonly weaponSprite: Phaser.GameObjects.Image;
-  private readonly speed = 82;
-  private readonly detectionRadius = 320;
+  private readonly attackDamage: number;
+  private readonly attackRange: number;
+  private readonly speed: number;
+  private readonly detectionRadius: number;
+  private readonly attackCooldownMs: number;
   private nextAttackAt = 0;
   private attackAnimationPlaying = false;
   private facing: 'down' | 'left' | 'right' | 'up' = 'down';
   private readonly scene: Phaser.Scene;
-  health = Enemy.maxHealth;
+  health = 0;
   isAlive = true;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, weaponTexture: string) {
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    weaponTexture: string,
+    difficulty: Partial<EnemyDifficulty> = {},
+    kind: EnemyKind = 'zombie',
+  ) {
     this.scene = scene;
-    this.sprite = scene.physics.add.sprite(x, y, pirateZombieAnimation('idle', this.facing));
-    this.sprite.setScale(0.18);
+    this.kind = kind;
+    const stats = { ...DEFAULT_DIFFICULTY, ...difficulty };
+    this.maxHealth = stats.maxHealth;
+    this.attackDamage = stats.attackDamage;
+    this.attackRange = stats.attackRange;
+    this.speed = stats.speed;
+    this.detectionRadius = stats.detectionRadius;
+    this.attackCooldownMs = stats.attackCooldownMs;
+    this.health = this.maxHealth;
+    this.sprite = scene.physics.add.sprite(x, y, this.animation('idle'));
+    this.sprite.setScale(kind === 'leader' ? 0.21 : 0.18);
     this.sprite.setSize(180, 190).setOffset(330, 380);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setDepth(2);
-    this.sprite.play(pirateZombieAnimation('idle', this.facing));
+    this.sprite.play(this.animation('idle'));
     this.weaponSprite = scene.add.image(x + 14, y + 6, weaponTexture)
       .setScale(1.15)
       .setDepth(2.2)
@@ -49,7 +87,7 @@ export class Enemy {
     if (distance > this.detectionRadius) {
       body.setVelocity(0, 0);
       if (!this.attackAnimationPlaying) this.playAnimation('idle');
-    } else if (distance > Enemy.attackRange) {
+    } else if (distance > this.attackRange) {
       body.setVelocity(deltaX, deltaY).velocity.normalize().scale(this.speed);
       if (!this.attackAnimationPlaying) this.playAnimation('running');
     } else {
@@ -63,8 +101,8 @@ export class Enemy {
           this.weaponSprite.setVisible(false);
           if (this.sprite.active) this.playAnimation('idle');
         });
-        player.takeDamage(Enemy.attackDamage, time);
-        this.nextAttackAt = time + 900;
+        player.takeDamage(this.attackDamage, time);
+        this.nextAttackAt = time + this.attackCooldownMs;
       } else if (!this.attackAnimationPlaying) {
         this.playAnimation('idle');
       }
@@ -88,14 +126,18 @@ export class Enemy {
     });
 
     if (this.health === 0) {
-      this.isAlive = false;
-      this.healthBar.destroy();
-      this.weaponSprite.destroy();
-      this.sprite.destroy();
+      this.destroy();
       return;
     }
 
     this.drawHealthBar();
+  }
+
+  destroy(): void {
+    this.isAlive = false;
+    if (this.healthBar.active) this.healthBar.destroy();
+    if (this.weaponSprite.active) this.weaponSprite.destroy();
+    if (this.sprite.active) this.sprite.destroy();
   }
 
   private updateFacing(deltaX: number, deltaY: number): void {
@@ -117,14 +159,20 @@ export class Enemy {
   }
 
   private playAnimation(action: 'attacking' | 'idle' | 'running'): void {
-    const key = pirateZombieAnimation(action, this.facing);
+    const key = this.animation(action);
     if (this.sprite.anims.currentAnim?.key !== key) this.sprite.play(key);
+  }
+
+  private animation(action: 'attacking' | 'idle' | 'running'): string {
+    return this.kind === 'leader'
+      ? pirateLeaderAnimation(action, this.facing)
+      : pirateZombieAnimation(action, this.facing);
   }
 
   private drawHealthBar(): void {
     if (!this.isAlive) return;
 
-    const ratio = this.health / Enemy.maxHealth;
+    const ratio = this.health / this.maxHealth;
     const x = this.sprite.x - 27;
     const y = this.sprite.y - 48;
     this.healthBar.clear();

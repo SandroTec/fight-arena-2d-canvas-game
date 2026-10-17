@@ -26,9 +26,9 @@ export class MeleeCombat {
   private readonly attackWindow: MeleeAttackWindow;
   private attackDirection = new Phaser.Math.Vector2(0, 1);
 
-  constructor(settings = PLAYER_MELEE) {
-    this.settings = settings;
-    this.attackWindow = new MeleeAttackWindow(settings.cooldownMs, settings.activeMs);
+  constructor(settings: Partial<MeleeAttackSettings> = {}) {
+    this.settings = { ...PLAYER_MELEE, ...settings };
+    this.attackWindow = new MeleeAttackWindow(this.settings.cooldownMs, this.settings.activeMs);
   }
 
   start(player: Player, time: number): boolean {
