@@ -1,21 +1,22 @@
-import './style.css';
-import { Player } from './modals/player.class.ts';
+import Phaser from 'phaser';
+import './style.scss';
+import { ArenaScene } from './modals/game.class.ts';
 
-const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d');
+const game = new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game',
+  width: 800,
+  height: 600,
+  backgroundColor: '#17251f',
+  physics: {
+    default: 'arcade',
+    arcade: { debug: false },
+  },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+  scene: [ArenaScene],
+});
 
-if (!ctx) {
-    throw new Error('Could not get canvas context');
-}
-
-const player = new Player(ctx, canvas);
-
-function gameLoop() {
-    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-    player.update();
-    player.draw();
-
-    requestAnimationFrame(gameLoop);
-}
-
-gameLoop();
+window.addEventListener('beforeunload', () => game.destroy(true));
