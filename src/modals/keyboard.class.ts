@@ -4,6 +4,8 @@ import Phaser from 'phaser';
 export class Keyboard {
   readonly cursors: Phaser.Types.Input.Keyboard.CursorKeys;
   readonly wasd: Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key>;
+  readonly attack: Phaser.Input.Keyboard.Key;
+  readonly confirm: Phaser.Input.Keyboard.Key;
 
   constructor(scene: Phaser.Scene) {
     const keyboard = scene.input.keyboard;
@@ -16,5 +18,7 @@ export class Keyboard {
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D,
     }) as Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key>;
+    this.attack = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.confirm = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
   }
 }
